@@ -13,14 +13,14 @@ from sklearn.metrics import mean_squared_error
 from sklearn.decomposition import PCA
 from sklearn.feature_selection import SelectKBest, f_classif
 
-
+# Streamlit App Title
 st.title("EDA and Feature Engineering App")
 
-
+# File Upload Section
 st.sidebar.header("Upload Dataset")
 uploaded_file = st.sidebar.file_uploader("Upload a CSV file", type=["csv"])
 
-
+# Handle missing values
 def handle_missing_values(df, column, strategy):
     if strategy == "Mean":
         df[column].fillna(df[column].mean(), inplace=True)
@@ -34,12 +34,15 @@ def handle_missing_values(df, column, strategy):
     return df
 
 if uploaded_file:
-    
-    df = pd.read_csv(uploaded_file)
+    # Load the Dataset (store it in session state)
+    if "df" not in st.session_state:
+        st.session_state.df = pd.read_csv(uploaded_file)
+
+    df = st.session_state.df
     st.write("### Dataset Preview")
     st.dataframe(df.head())
 
-    # Exploratory Data Analysis
+    # Exploratory Data Analysis Section
     st.sidebar.header("EDA Options")
     if st.sidebar.checkbox("Show Summary Statistics"):
         st.write("### Summary Statistics")
@@ -62,6 +65,7 @@ if uploaded_file:
 
             if st.button("Handle Missing Values"):
                 df = handle_missing_values(df, column, strategy)
+                st.session_state.df = df  # Store the updated dataframe in session state
                 st.success(f"Missing values in column '{column}' have been handled using the '{strategy}' strategy.")
                 st.write("### Updated Dataset")
                 st.dataframe(df.head())
@@ -186,21 +190,28 @@ if uploaded_file:
             df[f"{bin_column}_binned"] = pd.cut(df[bin_column], bins=bins)
             st.write(df.head())
 
+    st.sidebar.header("Feature Selection")
     if st.sidebar.checkbox("Feature Selection"):
         st.write("### Feature Selection")
-        st.write("#### SelectKBest")
-        k = st.slider("Select K Best Features", 1, len(numeric_cols), 5)
-        X = df[numeric_cols]
-        y = df['target']  # Adjust this if you have a target variable
-        selector = SelectKBest(f_classif, k=k)
-        X_new = selector.fit_transform(X, y)
-        st.write(f"Selected Features: {X.columns[selector.get_support()]}")
 
-        st.write("#### Principal Component Analysis (PCA)")
-        pca = PCA(n_components=2)
-        df_pca = pca.fit_transform(df[numeric_cols])
-        st.write("PCA Components")
-        st.write(pd.DataFrame(df_pca, columns=["PC1", "PC2"]))
+        if "target" not in df.columns:
+            st.warning("The dataset does not have a 'target' column. Please ensure the column exists for feature selection.")
+        else:
+            numeric_cols = df.select_dtypes(include=np.number).columns
+            X = df[numeric_cols]
+            y = df["target"]
+
+            st.write("#### SelectKBest")
+            k = st.slider("Select K Best Features", 1, len(numeric_cols), 5)
+            selector = SelectKBest(f_classif, k=k)
+            X_new = selector.fit_transform(X, y)
+            st.write(f"Selected Features: {X.columns[selector.get_support()]}")
+
+            st.write("#### Principal Component Analysis (PCA)")
+            pca = PCA(n_components=2)
+            df_pca = pca.fit_transform(X)
+            st.write("PCA Components")
+            st.write(pd.DataFrame(df_pca, columns=["PC1", "PC2"]))
 
     # Export Processed Data
     st.sidebar.header("Download Processed Data")
