@@ -5,23 +5,19 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px
 from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import KNNImputer
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-from sklearn.decomposition import PCA
-from sklearn.feature_selection import SelectKBest, f_classif
 
 # Streamlit App Title
-st.title("EDA and Feature Engineering App")
+st.title("EDA App")
 
 # File Upload Section
 st.sidebar.header("Upload Dataset")
 uploaded_file = st.sidebar.file_uploader("Upload a CSV file", type=["csv"])
 
-# Handle missing values
 def handle_missing_values(df, column, strategy):
+    """
+    Handle missing values in the selected column using the specified strategy.
+    """
     if strategy == "Mean":
         df[column].fillna(df[column].mean(), inplace=True)
     elif strategy == "Median":
@@ -148,84 +144,11 @@ if uploaded_file:
         st.pyplot(plt)
         plt.clf()
 
-    # Feature Engineering Section
-    st.sidebar.header("Feature Engineering")
-    if st.sidebar.checkbox("Scale Features"):
-        st.write("### Feature Scaling")
-        scaler = StandardScaler()
-        df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
-        st.write(df.head())
-
-    if st.sidebar.checkbox("Encode Categorical Features"):
-        st.write("### Categorical Encoding")
-        cat_cols = df.select_dtypes(include='object').columns
-        if len(cat_cols) > 0:
-            encoder = OneHotEncoder(sparse_output=False, drop='first')
-            encoded = pd.DataFrame(encoder.fit_transform(df[cat_cols]), columns=encoder.get_feature_names_out(cat_cols))
-            df = pd.concat([df, encoded], axis=1).drop(cat_cols, axis=1)
-            st.write(df.head())
-
-    if st.sidebar.checkbox("Feature Construction"):
-        st.write("### Feature Construction")
-        if st.sidebar.checkbox("Polynomial Features"):
-            degree = st.slider("Set Polynomial Degree", 2, 5, 2)
-            from sklearn.preprocessing import PolynomialFeatures
-            poly = PolynomialFeatures(degree=degree)
-            df_poly = poly.fit_transform(df[numeric_cols])
-            df_poly = pd.DataFrame(df_poly, columns=poly.get_feature_names_out(numeric_cols))
-            df = pd.concat([df, df_poly], axis=1)
-            st.write(df.head())
-
-        if st.sidebar.checkbox("Interaction Features"):
-            st.write("### Interaction Features Construction")
-            for col1 in numeric_cols:
-                for col2 in numeric_cols:
-                    if col1 != col2:
-                        df[f"{col1}_x_{col2}"] = df[col1] * df[col2]
-            st.write(df.head())
-
-        if st.sidebar.checkbox("Binning"):
-            bin_column = st.selectbox("Choose Column to Bin", numeric_cols)
-            bins = st.slider("Set Number of Bins", 2, 10, 3)
-            df[f"{bin_column}_binned"] = pd.cut(df[bin_column], bins=bins)
-            st.write(df.head())
-
-    st.sidebar.header("Feature Selection")
-    if st.sidebar.checkbox("Feature Selection"):
-        st.write("### Feature Selection")
-
-        if "target" not in df.columns:
-            st.warning("The dataset does not have a 'target' column. Please ensure the column exists for feature selection.")
-        else:
-            numeric_cols = df.select_dtypes(include=np.number).columns
-            X = df[numeric_cols]
-            y = df["target"]
-
-            st.write("#### SelectKBest")
-            k = st.slider("Select K Best Features", 1, len(numeric_cols), 5)
-            selector = SelectKBest(f_classif, k=k)
-            X_new = selector.fit_transform(X, y)
-            st.write(f"Selected Features: {X.columns[selector.get_support()]}")
-
-            st.write("#### Principal Component Analysis (PCA)")
-            pca = PCA(n_components=2)
-            df_pca = pca.fit_transform(X)
-            st.write("PCA Components")
-            st.write(pd.DataFrame(df_pca, columns=["PC1", "PC2"]))
-
-    # Export Processed Data
-    st.sidebar.header("Download Processed Data")
-    if st.sidebar.button("Download Processed Data"):
-        st.write("### Download Processed Data")
-        st.download_button(
-            label="Download CSV",
-            data=df.to_csv(index=False).encode('utf-8'),
-            file_name="processed_data.csv",
-            mime="text/csv"
-        )
+    
 
     # Export Updated Data Section
-    if st.sidebar.button("Download Updated Data"):
+    st.sidebar.header("Download Updated Data")
+    if st.sidebar.button("Download Updated Data", key="download_data"):
         st.write("### Download Updated Data")
         st.download_button(
             label="Download CSV",
